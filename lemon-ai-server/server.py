@@ -1,4 +1,4 @@
-from flask import Flask;
+from flask import Flask
 from incoming_call import incoming_call_app
 
 app = Flask(__name__)
