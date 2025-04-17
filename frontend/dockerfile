@@ -1,0 +1,20 @@
+# Stage 1: Build the application
+FROM node:23-slim AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2: Runtime image
+FROM node:23-slim
+WORKDIR /app
+# Copy build artifacts
+COPY --from=builder /app/build /app/build
+# Copy package files and install production dependencies
+COPY --from=builder /app/package*.json ./
+RUN npm install --production
+# Expose the correct port (adjust if needed)
+EXPOSE 80
+# Run the application
+CMD ["node", "build/index.js"]

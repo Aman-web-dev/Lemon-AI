@@ -42,6 +42,8 @@ io.on("connection", (socket) => {
 });
 
 const send = (socket, type, body) => {
+  console.log("sending",type,body);
+  console.log(channels);
   socket.send(
     "message",
     JSON.stringify({
@@ -63,6 +65,7 @@ const clearClient = (socket) => {
 };
 
 const onMessage = (socket, message) => {
+  console.log("Channels",channels)
   const parsedMessage = JSON.parse(message);
   const type = parsedMessage.type;
   const body = parsedMessage.body;
@@ -133,6 +136,22 @@ const onMessage = (socket, message) => {
             );
           }
         });
+      }
+      break;
+    }
+
+    case "sample_message":{
+      const message=body.message;
+      console.log("sample Message From Frontend")
+      if(channels[channelName]){
+        console.log("sample Message From Frontend")
+        Object.keys(channels[channelName]).forEach((user)=>{
+          console.log(user)
+          if(user.toString()!=userId.toString()){
+            console.log(user)
+            send(channels[channelName][user],"sample_message_recieved",{message})
+          }
+        })
       }
       break;
     }

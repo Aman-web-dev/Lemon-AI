@@ -6,6 +6,13 @@
 	const outGoingMessage = $state([]);
 	const socket = io('http://localhost:9000/');
 
+	
+	const sendWsMessage = (type: string, body: any) => {
+		socket.emit('chat message', JSON.stringify({ type, body }));
+	};
+
+	sendWsMessage("join",{channelName:"channel123",userId:"Frontend"})
+
 	const deviceSetUp = async () => {};
 
 	let localPeerConnection;
@@ -70,9 +77,6 @@
 		}
 	};
 
-	const sendWsMessage = (type: string, body: any) => {
-		socket.emit('chat message', JSON.stringify({ type, body }));
-	};
 
 	socket.on('message', (message: string) => {
 		console.log(message);
@@ -108,14 +112,16 @@
 		}
 	};
 
-
-	const onAnswer=()=>{
-		
-	}
+const sendSampleMessage=()=>{
+	sendWsMessage("sample_message",{message:"hi backend",userId:"frontend",channelName:"channel123"})
+}
 </script>
 
 <h1>Hello here you will Learn</h1>
 
 <button on:click={createOffer}>Create Offer</button>
+
+<button on:click={sendSampleMessage}>Send Sample Message</button>
+
 
 <audio controls id="audio-player" autoplay> </audio>

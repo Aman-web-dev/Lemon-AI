@@ -1,9 +1,8 @@
-
 from flask import request, Blueprint
 import json
 import logging
 import socketio
-
+import threading
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 incoming_call_app = Blueprint("incoming_call", __name__)
 
-# Store socket connection (consider using a proper connection pool for production)
+# Store socket connection
 socket_connection = None
 
 def get_socket():
@@ -19,13 +18,54 @@ def get_socket():
     if socket_connection is None:
         try:
             socket_connection = socketio.Client()
+            # Register event handlers before connecting
+            register_handlers(socket_connection)
             socket_connection.connect("http://localhost:9000")
-            print(socket_connection)
             logger.info("SocketIO connection established")
+            # Start a thread to keep the connection alive and process events
+            threading.Thread(target=socket_connection.wait, daemon=True).start()
         except Exception as e:
             logger.error(f"Failed to connect to SocketIO server: {e}")
             raise
     return socket_connection
+
+
+
+
+def register_handlers(sio):
+    @sio.on("message")
+    def on_message(data, *args):
+        logger.info(f"Received raw message: {data}")  # Log raw data for debugging
+        print("I got a message:", data,*args)
+        try:
+            if isinstance(data, str):
+                # Try to parse as JSON only if it looks like JSON
+                if data.startswith('{') or data.startswith('['):
+                    msg_data = json.loads(data)
+                    logger.info(f"Parsed message: {msg_data}")
+                    # Example reply with JSON
+                    reply = {"type": "response", "body": f"Received: {msg_data}"}
+                    sio.emit("reply", json.dumps(reply))
+                    logger.info(f"Sent reply: {reply}")
+                else:
+                    logger.info(f"Plain string message: {data}")
+                    # Handle plain string (no JSON parsing)
+                    reply = {"type": "response", "body": f"Received: {data}"}
+                    sio.emit("reply", json.dumps(reply))
+                    logger.info(f"Sent reply for plain text: {reply}")
+            else:
+                logger.info(f"Non-string message (e.g., dict): {data}")
+                # Handle non-string data (e.g., dict or list)
+                reply = {"type": "response", "body": f"Received: {data}"}
+                sio.emit("reply", json.dumps(reply))
+                logger.info(f"Sent reply for non-JSON: {reply}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in message: {e}, Raw data: {data}")
+            # Handle invalid JSON with raw data
+            sio.emit("reply", json.dumps({"type": "error", "body": f"Invalid JSON: {data}"}))
+
+# Rest of your code remains the same
+
 
 def send(type, body):
     try:
@@ -34,7 +74,6 @@ def send(type, body):
             "type": type,
             "body": body
         }
-
         socket.emit('chat message', json.dumps(message))
         logger.info(f"Sent message: {message}")
     except Exception as e:
@@ -51,12 +90,12 @@ def connect_to_room():
         channel_name = data["body"]["channelName"]
         logger.info(f"Received request to join room: {channel_name}")
         
-        socket=get_socket()
+        socket = get_socket()
         print(socket)
 
         obj = {
             "channelName": channel_name,
-            "userId": 12442  # Replace with dynamic user ID logic
+            "userId": "python_server"
         }
         send("join", obj)
 
@@ -70,18 +109,8 @@ def connect_to_room():
 def pick_call():
     try:
         logger.info("Received call pick request")
-        # Add logic to handle picking a call (e.g., emit a SocketIO event)
+        send("pick_call", {"userId": "python_server"})
         return {"message": "Call picked"}, 200
     except Exception as e:
         logger.error(f"Error in pick_call: {e}")
         return {"error": str(e)}, 500
-
-# # Optional: Cleanup on app shutdown
-# @incoming_call_app.teardown_app_request
-# def cleanup(exception=None):
-#     global socket_connection
-#     if socket_connection is not None:
-#         # Close SocketIO connection gracefully (if supported by socketIO_client)
-#         socket_connection.disconnect()
-#         socket_connection = None
-#         logger.info("SocketIO connection closed")

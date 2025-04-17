@@ -1,4 +1,4 @@
 {
     "private": true,
-    "workspaces": ["frontend", "websocket-server","botserver"]
+    "workspaces": ["frontend", "websocket-server","lemon-ai-server"]
   }
